@@ -1,72 +1,76 @@
 <?php
-$base_url = '../';
-$base_url_path = '../';
-$titre_page = "Modifier une catégorie";
+/**
+ * Edition d'une catégorie
+ */
 
+$chemin_racine = '../';
 require_once '../config.php';
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+session_start();
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['administrateur', 'editeur'])) {
+    exit("Interdit !");
+}
 
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['editeur','administrateur'])) {
-    header('Location: ../connexion.php');
+$base_db = matos_connexion();
+$msg_info = "";
+
+$cat_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if($cat_id <= 0) {
+    header('Location: liste.php');
     exit;
 }
 
-$pdo = getConnexion();
-$erreurs = [];
+// On récupère les infos actuelles
+$query = $base_db->prepare("SELECT * FROM categories WHERE id = ?");
+$query->execute([$cat_id]);
+$info_cat = $query->fetch();
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-if ($id <= 0) { header('Location: liste.php'); exit; }
-
-$stmt = $pdo->prepare("SELECT * FROM categories WHERE id = ?");
-$stmt->execute([$id]);
-$cat = $stmt->fetch();
-if (!$cat) { header('Location: liste.php'); exit; }
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nom  = trim($_POST['nom'] ?? '');
-    $desc = trim($_POST['description'] ?? '');
-
-    if (strlen($nom) < 2) $erreurs[] = "Nom trop court.";
-
-    if (empty($erreurs)) {
-        $upd = $pdo->prepare("UPDATE categories SET nom=?, description=? WHERE id=?");
-        $upd->execute([$nom, $desc, $id]);
-        $_SESSION['msg'] = "Catégorie modifiée.";
-        header('Location: liste.php');
-        exit;
-    }
-    $cat['nom'] = $nom;
-    $cat['description'] = $desc;
+if(!$info_cat) {
+    header('Location: liste.php');
+    exit;
 }
 
-require_once '../entete.php';
-require_once '../menu.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $nouveau_nom = trim($_POST['txt_nom'] ?? '');
+    $nouvelle_desc = trim($_POST['txt_desc'] ?? '');
+    
+    if($nouveau_nom != '') {
+        $upd = $base_db->prepare("UPDATE categories SET nom = ?, description = ? WHERE id = ?");
+        $upd->execute([$nouveau_nom, $nouvelle_desc, $cat_id]);
+        header('Location: liste.php?ok=1');
+        exit;
+    } else {
+        $msg_info = "Le nom ne peut pas être vide.";
+    }
+}
+
+$page_titre = "Modifier la catégorie";
+include '../entete.php';
+include '../menu.php';
 ?>
 
 <main class="container">
-    <div class="page-header">
-        <h1>Modifier la catégorie</h1>
-        <a href="liste.php" class="btn-retour">← Retour</a>
+    <div style="max-width:600px; margin:0 auto; background:var(--card-bg); padding:3rem; border-radius:12px; border:1px solid var(--border);">
+        <h1>Modifier : <?= htmlspecialchars($info_cat['nom']) ?></h1>
+        
+        <?php if($msg_info): ?>
+            <p style="color:#ef4444; margin:1.5rem 0"><?= $msg_info ?></p>
+        <?php endif; ?>
+
+        <form action="modifier.php?id=<?= $cat_id ?>" method="POST">
+            <div style="margin-bottom:1.5rem">
+                <label style="display:block; margin-bottom:0.5rem">Nom de la catégorie</label>
+                <input type="text" name="txt_nom" value="<?= htmlspecialchars($info_cat['nom']) ?>" required style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;">
+            </div>
+
+            <div style="margin-bottom:2rem">
+                <label style="display:block; margin-bottom:0.5rem">Description courte</label>
+                <textarea name="txt_desc" rows="4" style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;"><?= htmlspecialchars($info_cat['description']) ?></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit" style="width:100%">ENREGISTRER LES MODIFS</button>
+        </form>
     </div>
-
-    <?php if (!empty($erreurs)): ?>
-    <div class="alert alert-danger"><ul>
-        <?php foreach ($erreurs as $e) echo '<li>' . htmlspecialchars($e) . '</li>'; ?>
-    </ul></div>
-    <?php endif; ?>
-
-    <form method="POST" action="modifier.php?id=<?= $id ?>" novalidate>
-        <div class="form-group">
-            <label for="nom">Nom *</label>
-            <input type="text" id="nom" name="nom" value="<?= htmlspecialchars($cat['nom']) ?>">
-        </div>
-        <div class="form-group">
-            <label for="description">Description</label>
-            <textarea id="description" name="description" rows="3"><?= htmlspecialchars($cat['description'] ?? '') ?></textarea>
-        </div>
-        <button type="submit" class="btn-submit">Enregistrer</button>
-    </form>
 </main>
 
-<?php require_once '../pied.php'; ?>
+<?php include '../pied.php'; ?>

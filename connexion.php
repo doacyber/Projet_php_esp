@@ -1,75 +1,105 @@
 <?php
-$base_url = '';
-$base_url_path = '';
-$titre_page = "Connexion";
+/**
+ * Gestion de la connexion utilisateur
+ */
 
 require_once 'config.php';
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+session_start();
 
+// Si déjà connecté, retour à l'accueil
 if (isset($_SESSION['user_id'])) {
     header('Location: accueil.php');
     exit;
 }
 
-$erreur = '';
+$messageErreur = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $login = trim($_POST['login'] ?? '');
-    $mdp   = $_POST['mot_de_passe'] ?? '';
 
-    if (empty($login) || empty($mdp)) {
-        $erreur = "Veuillez remplir tous les champs.";
-    } else {
-        $pdo = getConnexion();
-        $stmt = $pdo->prepare("SELECT * FROM utilisateurs WHERE login = ?");
-        $stmt->execute([$login]);
-        $user = $stmt->fetch();
+    // Récupération des champs
+    $loginSaisi = trim($_POST['username'] ?? '');
+    $motDePasseSaisi = $_POST['password'] ?? '';
 
-        if ($user && password_verify($mdp, $user['mot_de_passe'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['login']   = $user['login'];
-            $_SESSION['nom']     = $user['nom'];
-            $_SESSION['prenom']  = $user['prenom'];
-            $_SESSION['role']    = $user['role'];
-            header('Location: accueil.php');
-            exit;
+    if ($loginSaisi !== '' && $motDePasseSaisi !== '') {
+
+        $connexion = matos_connexion();
+
+        // Recherche du compte
+        $requete = $connexion->prepare(
+            "SELECT id, nom, prenom, role, mot_de_passe 
+             FROM utilisateurs 
+             WHERE login = :login"
+        );
+
+        $requete->execute(['login' => $loginSaisi]);
+
+        $utilisateur = $requete->fetch(PDO::FETCH_ASSOC);
+
+        if ($utilisateur) {
+
+            // Vérification du mot de passe
+            if (password_verify($motDePasseSaisi, $utilisateur['mot_de_passe'])) {
+
+                // Initialisation session
+                $_SESSION['user_id'] = $utilisateur['id'];
+                $_SESSION['nom'] = $utilisateur['nom'];
+                $_SESSION['prenom'] = $utilisateur['prenom'];
+                $_SESSION['role'] = $utilisateur['role'];
+
+                header('Location: accueil.php?status=connected');
+                exit;
+
+            } else {
+                $messageErreur = "Mot de passe incorrect.";
+            }
+
         } else {
-            $erreur = "Login ou mot de passe incorrect.";
+            $messageErreur = "Utilisateur introuvable.";
         }
+
+    } else {
+        $messageErreur = "Veuillez renseigner tous les champs.";
     }
 }
 
-$page_connexion = true;
-require_once 'entete.php';
-require_once 'menu.php';
+$page_titre = "Connexion";
+$hide_connexion_btn = true;
+
+include 'entete.php';
+include 'menu.php';
 ?>
 
 <main class="container">
-    <div class="form-wrapper">
-        <h1>Connexion</h1>
+    <div class="auth-card">
 
-        <?php if ($erreur): ?>
-            <div class="alert alert-danger"><?= htmlspecialchars($erreur) ?></div>
+        <h1 class="auth-title">Espace utilisateur</h1>
+
+        <?php if (!empty($messageErreur)): ?>
+            <div class="alert-error">
+                <?= htmlspecialchars($messageErreur) ?>
+            </div>
         <?php endif; ?>
 
-        <form id="formConnexion" method="POST" action="connexion.php" novalidate>
+        <form action="connexion.php" method="POST">
+
             <div class="form-group">
-                <label for="login">Login</label>
-                <input type="text" id="login" name="login"
-                       value="<?= htmlspecialchars($_POST['login'] ?? '') ?>"
-                       placeholder="Votre login">
-                <span class="err-msg" id="err-login"></span>
+                <label>Login</label>
+                <input type="text" name="username" value="<?= htmlspecialchars($loginSaisi ?? '') ?>">
             </div>
+
             <div class="form-group">
-                <label for="mot_de_passe">Mot de passe</label>
-                <input type="password" id="mot_de_passe" name="mot_de_passe" placeholder="••••••••">
-                <span class="err-msg" id="err-mdp"></span>
+                <label>Mot de passe</label>
+                <input type="password" name="password">
             </div>
-            <button type="submit" class="btn-submit">Se connecter</button>
+
+            <button type="submit" class="btn-primary">
+                Se connecter
+            </button>
+
         </form>
+
     </div>
 </main>
 
-<script src="assets/js/validation.js"></script>
-<?php require_once 'pied.php'; ?>
+<?php include 'pied.php'; ?>

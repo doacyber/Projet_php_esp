@@ -1,5 +1,6 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
+// On lance la session direct
+if (!session_id()) {
     session_start();
 }
 ?>
@@ -8,13 +9,21 @@ if (session_status() === PHP_SESSION_NONE) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= isset($titre_page) ? htmlspecialchars($titre_page) : 'Actualités ESP' ?></title>
-    <link rel="stylesheet" href="<?= $base_url ?? '' ?>assets/css/style.css?v=2">
+    <title><?php echo isset($page_titre) ? $page_titre : 'JAKARLO ESP'; ?></title>
+    
+    <!-- Nouveau style premium Noir & Ambre -->
+    <link rel="stylesheet" href="<?php echo (isset($chemin_racine) ? $chemin_racine : ''); ?>assets/css/style.css?v=<?php echo time(); ?>">
+    
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
+
 <header>
     <div class="header-inner">
-        <a href="<?= $base_url ?? '' ?>accueil.php" class="site-titre">📰 Actualités ESP</a>
-        <span class="header-sub">École Supérieure Polytechnique</span>
+        <a href="<?php echo (isset($chemin_racine) ? $chemin_racine : ''); ?>accueil.php" class="site-titre">
+            JAKARLO <span style="color:var(--accent)">ESP</span>
+        </a>
+        <div class="header-sub">Portail de l'École Supérieure Polytechnique</div>
     </div>
 </header>

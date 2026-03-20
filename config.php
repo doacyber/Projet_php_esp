@@ -1,26 +1,30 @@
 <?php
 
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'actualites_db');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_CHARSET', 'utf8mb4');
+define('HOTE_DB', 'localhost');
+define('NOM_DB', 'actualites_db');
+define('USER_DB', 'root');
+define('PASS_DB', '');
 
-function getConnexion() {
-    static $pdo = null;
-    if ($pdo === null) {
-        $dsn = "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=".DB_CHARSET;
-        $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        ];
+function matos_connexion() {
+    // Un petit singleton maison pour la DB
+    static $base_donnees = null;
+    
+    if ($base_donnees === null) {
+        $chaine = "mysql:host=".HOTE_DB.";dbname=".NOM_DB.";charset=utf8mb4";
+        
         try {
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+            // On configure PDO pour qu'il cause un peu en cas de pépin
+            $base_donnees = new PDO($chaine, USER_DB, PASS_DB, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+            ]);
         } catch (PDOException $e) {
-            die("Erreur de connexion à la base de données.");
+            // Si ça crash, on arrete tout
+            exit("La base de données fait la gueule : " . $e->getMessage());
         }
     }
-    return $pdo;
+    return $base_donnees;
 }
 
-define('ARTICLES_PAR_PAGE', 5);
+// Pour la pagination, on garde 5 articles par défaut
+define('NB_MAX_ARTICLES', 5);

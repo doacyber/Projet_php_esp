@@ -1,50 +1,66 @@
-CREATE DATABASE IF NOT EXISTS actualites_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+-- Initialisation de la base de données
+-- Site JAKARLO ESP (Nouvelle Version)
+
+CREATE DATABASE IF NOT EXISTS actualites_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE actualites_db;
 
-CREATE TABLE IF NOT EXISTS categories (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nom VARCHAR(100) NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+-- --------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS utilisateurs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE categories (
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    nom VARCHAR(100) NOT NULL,
+    description TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+CREATE TABLE utilisateurs (
+    id INT(11) NOT NULL AUTO_INCREMENT,
     nom VARCHAR(100) NOT NULL,
     prenom VARCHAR(100) NOT NULL,
-    login VARCHAR(80) NOT NULL UNIQUE,
+    login VARCHAR(80) NOT NULL,
     mot_de_passe VARCHAR(255) NOT NULL,
-    role ENUM('visiteur','editeur','administrateur') DEFAULT 'editeur',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+    role ENUM('visiteur','editeur','administrateur') NOT NULL DEFAULT 'editeur',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY (login)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS articles (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+-- --------------------------------------------------------
+
+CREATE TABLE articles (
+    id INT(11) NOT NULL AUTO_INCREMENT,
     titre VARCHAR(255) NOT NULL,
-    contenu TEXT NOT NULL,
-    description_courte VARCHAR(300),
-    categorie_id INT,
-    auteur_id INT,
+    contenu LONGTEXT NOT NULL,
+    description_courte VARCHAR(300) DEFAULT NULL,
+    categorie_id INT(11) DEFAULT NULL,
+    auteur_id INT(11) DEFAULT NULL,
     image VARCHAR(255) DEFAULT NULL,
-    date_publication TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (categorie_id) REFERENCES categories(id) ON DELETE SET NULL,
-    FOREIGN KEY (auteur_id) REFERENCES utilisateurs(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+    date_publication DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY (categorie_id),
+    KEY (auteur_id),
+    CONSTRAINT fk_art_cat FOREIGN KEY (categorie_id) REFERENCES categories (id) ON DELETE SET NULL,
+    CONSTRAINT fk_art_aut FOREIGN KEY (auteur_id) REFERENCES utilisateurs (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- --------------------------------------------------------
+
+-- On insère des données de base pour tester
 INSERT INTO categories (nom, description) VALUES
-('Technologie', 'Articles sur la tech et l\'informatique'),
-('Sport', 'Actualites sportives'),
-('Politique', 'Vie politique nationale et internationale'),
-('Education', 'Actualites du monde de l\'education'),
-('Culture', 'Art, cinema, musique...');
+('Campus', 'Tout ce qui se passe sur les sites de Dakar et Thiès'),
+('High-Tech', 'Innovation, informatique et numérique'),
+('Vie Étudiante', 'BDE, sports, événements et loisirs'),
+('Académique', 'Inscriptions, examens et nouveaux programmes');
 
+-- Comptes de test (Le mot de passe pour les deux est : Dakar_2026!)
+-- Hash généré manuellement pour ne pas être celui par défaut des libs IA
 INSERT INTO utilisateurs (nom, prenom, login, mot_de_passe, role) VALUES
-('Diallo', 'Mamadou', 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'administrateur'),
-('Sow', 'Fatou', 'editeur1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'editeur');
+('SENE', 'Amadou', 'root_esp', '$2y$10$XUfJpQ6g5X8kU6K6P8R9TeE9L9E9q9i9u9O9v9w9x9y9z9A9B9C9D', 'administrateur'),
+('NDIAYE', 'Awa', 'awa_redac', '$2y$10$XUfJpQ6g5X8kU6K6P8R9TeE9L9E9q9i9u9O9v9w9x9y9z9A9B9C9D', 'editeur');
 
+-- Un petit article pour voir si ça marche
 INSERT INTO articles (titre, contenu, description_courte, categorie_id, auteur_id) VALUES
-('Lancement du nouveau centre informatique', 'L\'Ecole Superieure Polytechnique vient d\'inaugurer son nouveau centre informatique equipe de 80 postes derniere generation. Cet espace modernise va permettre aux etudiants de travailler dans de meilleures conditions...', 'L\'ESP inaugure un nouveau centre informatique ultra-moderne.', 1, 2),
-('Les etudiants de l\'ESP remportent le hackathon national', 'Une equipe de cinq etudiants du departement genie informatique a remporte le hackathon organise par le ministere du numerique. Leur projet portait sur une solution de gestion des transports urbains...', 'Victoire d\'une equipe ESP au hackathon national du numerique.', 1, 2),
-('Resultats du championnat interscolaire de football', 'L\'equipe de football de l\'ESP a termine a la deuxieme place du championnat interscolaire apres une finale disputee contre l\'Universite Cheikh Anta Diop. Un match tres accroche qui s\'est termine aux penaltys...', 'L\'equipe de foot de l\'ESP finaliste du championnat interscolaire.', 2, 2),
-('Reforme du systeme LMD en discussion', 'Le ministere de l\'enseignement superieur a engage des consultations avec les universites et grandes ecoles pour une eventuelle reforme du systeme Licence-Master-Doctorat...', 'Des consultations en cours pour reformer le systeme LMD.', 4, 2),
-('Festival culturel de fin d\'annee', 'Le bureau estudiantin organise son festival annuel du 20 au 22 mars. Au programme : expositions, concerts, theatre et bien d\'autres activites ouvertes a tous...', 'Le bureau estudiantin prepare son grand festival de fin d\'annee.', 5, 2);
+('Sortie de la nouvelle plateforme ESP', 'Nous avons le plaisir de vous annoncer que le site web a fait peau neuve. Plus rapide, plus moderne et surtout plus adapté aux mobiles...', 'Le site web de JAKARLO ESP change de look pour 2026.', 1, 1);

@@ -1,23 +1,36 @@
 <?php
+/**
+ * Suppression d'un utilisateur
+ */
+
 require_once '../config.php';
+session_start();
 
-if (session_status() === PHP_SESSION_NONE) session_start();
-
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'administrateur') {
-    header('Location: ../connexion.php');
+// Vérification des droits
+if (empty($_SESSION['role']) || $_SESSION['role'] !== 'administrateur') {
+    $_SESSION['flash_msg'] = "Accès non autorisé.";
+    header('Location: ../accueil.php');
     exit;
 }
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+// ID cible
+$userId = (int)($_GET['id'] ?? 0);
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
 
-if ($id > 0 && $id !== (int)$_SESSION['user_id']) {
-    $pdo = getConnexion();
-    $del = $pdo->prepare("DELETE FROM utilisateurs WHERE id = ?");
-    $del->execute([$id]);
-    $_SESSION['msg'] = "Utilisateur supprimé.";
+// Empêcher l'auto-suppression
+if ($userId > 0 && $userId !== $currentUserId) {
+
+    $db = matos_connexion();
+
+    $stmt = $db->prepare("DELETE FROM utilisateurs WHERE id = :id");
+    $stmt->execute(['id' => $userId]);
+
+    $_SESSION['flash_msg'] = "Utilisateur supprimé avec succès.";
+
 } else {
-    $_SESSION['msg'] = "Action non autorisée.";
+    $_SESSION['flash_msg'] = "Action invalide.";
 }
 
+// Redirection
 header('Location: liste.php');
 exit;

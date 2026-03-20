@@ -1,82 +1,103 @@
 <?php
-require_once $base_url_path . 'config.php';
+/**
+ * Menu principal avec gestion des droits utilisateurs
+ */
 
-$role = $_SESSION['role'] ?? 'visiteur';
-$connecte = isset($_SESSION['user_id']);
+require_once (isset($chemin_racine) ? $chemin_racine : '') . 'config.php';
+
+// Infos session
+$roleUtilisateur = $_SESSION['role'] ?? 'invite';
+$estConnecte = !empty($_SESSION['user_id']);
+$prenomUtilisateur = $_SESSION['prenom'] ?? '';
+
+// Connexion DB pour les catégories
+$db = matos_connexion();
+$categories = $db->query("SELECT id, nom FROM categories ORDER BY nom ASC")->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
+
 <nav class="navbar">
-    <button class="hamburger" id="hamburgerBtn" aria-label="Menu" aria-expanded="false">
+    <button class="hamburger" id="toggleMobileMenu">
         <span></span><span></span><span></span>
     </button>
 
-    <ul id="navMenu">
-        <li><a href="<?= $base_url ?? '' ?>accueil.php">Accueil</a></li>
+    <ul id="mainNav">
+        <li>
+            <a href="<?= $chemin_racine ?? '' ?>accueil.php">Accueil</a>
+        </li>
 
+        <!-- Catégories -->
         <li class="dropdown">
             <a href="#">Catégories ▾</a>
             <ul class="dropdown-menu">
-                <?php
-                $pdo = getConnexion();
-                $cats = $pdo->query("SELECT id, nom FROM categories ORDER BY nom")->fetchAll();
-                foreach ($cats as $c) {
-                    echo '<li><a href="'. ($base_url ?? '') .'accueil.php?categorie_id='. $c['id'] .'">'. htmlspecialchars($c['nom']) .'</a></li>';
-                }
-                ?>
-                <?php if ($connecte && in_array($role, ['editeur','administrateur'])): ?>
-                <li class="dropdown-divider"></li>
-                <li><a href="<?= $base_url ?? '' ?>categories/ajouter.php">➕ Ajouter</a></li>
-                <li><a href="<?= $base_url ?? '' ?>categories/liste.php">⚙️ Gérer</a></li>
+
+                <?php foreach ($categories as $cat): ?>
+                    <li>
+                        <a href="<?= ($chemin_racine ?? '') . 'accueil.php?categorie_id=' . (int)$cat['id'] ?>">
+                            <?= htmlspecialchars($cat['nom']) ?>
+                        </a>
+                    </li>
+                <?php endforeach; ?>
+
+                <?php if ($estConnecte && in_array($roleUtilisateur, ['administrateur', 'editeur'])): ?>
+                    <li class="dropdown-divider"></li>
+                    <li><a href="<?= $chemin_racine ?? '' ?>categories/ajouter.php">Ajouter</a></li>
+                    <li><a href="<?= $chemin_racine ?? '' ?>categories/liste.php">Gérer</a></li>
                 <?php endif; ?>
+
             </ul>
         </li>
 
-        <?php if ($connecte && in_array($role, ['editeur','administrateur'])): ?>
-        <li class="dropdown">
-            <a href="#">Articles ▾</a>
-            <ul class="dropdown-menu">
-                <li><a href="<?= $base_url ?? '' ?>articles/ajouter.php">➕ Ajouter un article</a></li>
-                <li><a href="<?= $base_url ?? '' ?>articles/liste.php">⚙️ Gérer les articles</a></li>
-            </ul>
-        </li>
+        <!-- Rédaction -->
+        <?php if ($estConnecte && in_array($roleUtilisateur, ['administrateur', 'editeur'])): ?>
+            <li class="dropdown">
+                <a href="#">Rédaction ▾</a>
+                <ul class="dropdown-menu">
+                    <li><a href="<?= $chemin_racine ?? '' ?>articles/ajouter.php">Nouvel article</a></li>
+                    <li><a href="<?= $chemin_racine ?? '' ?>articles/liste.php">Tous les articles</a></li>
+                </ul>
+            </li>
         <?php endif; ?>
 
-        <?php if ($connecte && $role === 'administrateur'): ?>
-        <li class="dropdown">
-            <a href="#">Utilisateurs ▾</a>
-            <ul class="dropdown-menu">
-                <li><a href="<?= $base_url ?? '' ?>utilisateurs/ajouter.php">➕ Ajouter</a></li>
-                <li><a href="<?= $base_url ?? '' ?>utilisateurs/liste.php">⚙️ Gérer</a></li>
-            </ul>
-        </li>
+        <!-- Admin -->
+        <?php if ($estConnecte && $roleUtilisateur === 'administrateur'): ?>
+            <li class="dropdown">
+                <a href="#">Administration ▾</a>
+                <ul class="dropdown-menu">
+                    <li><a href="<?= $chemin_racine ?? '' ?>utilisateurs/ajouter.php">Créer un compte</a></li>
+                    <li><a href="<?= $chemin_racine ?? '' ?>utilisateurs/liste.php">Utilisateurs</a></li>
+                </ul>
+            </li>
         <?php endif; ?>
     </ul>
 
+    <!-- Zone utilisateur -->
     <div class="nav-auth">
-        <?php if ($connecte): ?>
+        <?php if ($estConnecte): ?>
             <span class="user-info">
-                👤 <?= htmlspecialchars($_SESSION['prenom'] . ' ' . $_SESSION['nom']) ?>
-                <em>(<?= htmlspecialchars($role) ?>)</em>
+                Bonjour, <strong><?= htmlspecialchars($prenomUtilisateur) ?></strong>
             </span>
-            <a href="<?= $base_url ?? '' ?>deconnexion.php" class="btn-deco">Déconnexion</a>
+            <a href="<?= $chemin_racine ?? '' ?>deconnexion.php" class="btn-deco">Déconnexion</a>
         <?php else: ?>
-            <?php if (!isset($page_connexion)): ?>
-            <a href="<?= $base_url ?? '' ?>connexion.php" class="btn-co">Connexion</a>
+            <?php if (!isset($hide_connexion_btn)): ?>
+                <a href="<?= $chemin_racine ?? '' ?>connexion.php" class="btn-co">Connexion</a>
             <?php endif; ?>
         <?php endif; ?>
     </div>
 </nav>
 
 <script>
-(function() {
-    var btn = document.getElementById('hamburgerBtn');
-    var menu = document.getElementById('navMenu');
-    if (btn && menu) {
-        btn.addEventListener('click', function() {
-            var expanded = this.getAttribute('aria-expanded') === 'true';
-            this.setAttribute('aria-expanded', !expanded);
-            menu.classList.toggle('nav-open');
-            this.classList.toggle('active');
+// Gestion simple du menu mobile
+document.addEventListener('DOMContentLoaded', function () {
+    const btnMenu = document.getElementById('toggleMobileMenu');
+    const nav = document.getElementById('mainNav');
+
+    if (btnMenu && nav) {
+        btnMenu.addEventListener('click', function () {
+            const isVisible = nav.style.display === 'flex';
+            nav.style.display = isVisible ? 'none' : 'flex';
+            btnMenu.classList.toggle('active');
         });
     }
-})();
+});
 </script>

@@ -1,122 +1,98 @@
 <?php
-$base_url = '../';
-$base_url_path = '../';
-$titre_page = "Ajouter un article";
+/**
+ * Création d'un nouvel article
+ */
 
+$chemin_racine = '../';
 require_once '../config.php';
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+@session_start();
 
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['editeur','administrateur'])) {
-    header('Location: ../connexion.php');
-    exit;
+// Protection de la page
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['editeur', 'administrateur'])) {
+    die("Accès non autorisé !");
 }
 
-$pdo = getConnexion();
-$erreurs = [];
-$vals = ['titre'=>'','description_courte'=>'','contenu'=>'','categorie_id'=>''];
+$erreur_form = "";
+$db_handle = matos_connexion();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $t = trim($_POST['t'] ?? '');
+    $d = trim($_POST['d'] ?? '');
+    $c = trim($_POST['c'] ?? '');
+    $cat = (int)($_POST['cat_id'] ?? 0);
 
-    $titre  = trim($_POST['titre'] ?? '');
-    $desc   = trim($_POST['description_courte'] ?? '');
-    $contenu = trim($_POST['contenu'] ?? '');
-    $cat_id = (int)($_POST['categorie_id'] ?? 0);
-
-    $vals = compact('titre','desc','contenu','cat_id');
-
-    if (strlen($titre) < 3)   $erreurs[] = "Le titre doit faire au moins 3 caractères.";
-    if (strlen($contenu) < 10) $erreurs[] = "Le contenu est trop court.";
-    if ($cat_id <= 0)          $erreurs[] = "Veuillez choisir une catégorie.";
-    if (strlen($desc) > 300)   $erreurs[] = "La description courte ne doit pas dépasser 300 caractères.";
-
-    $nom_image = null;
-    if (!empty($_FILES['image']['name'])) {
-        $ext_ok = ['jpg','jpeg','png','gif','webp'];
-        $ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, $ext_ok)) {
-            $erreurs[] = "Format d'image non supporté (jpg, png, gif, webp uniquement).";
-        } elseif ($_FILES['image']['size'] > 2 * 1024 * 1024) {
-            $erreurs[] = "L'image ne doit pas dépasser 2 Mo.";
-        } else {
-            $nom_image = uniqid('img_') . '.' . $ext;
-            move_uploaded_file($_FILES['image']['tmp_name'], '../uploads/' . $nom_image);
+    if ($t != '' && $c != '' && $cat > 0) {
+        $img_name = null;
+        if (!empty($_FILES['pic']['name'])) {
+            $ext = strtolower(pathinfo($_FILES['pic']['name'], PATHINFO_EXTENSION));
+            if (in_array($ext, ['jpg','jpeg','png','webp'])) {
+                $img_name = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                move_uploaded_file($_FILES['pic']['tmp_name'], '../uploads/' . $img_name);
+            }
         }
-    }
 
-    if (empty($erreurs)) {
-        $ins = $pdo->prepare("INSERT INTO articles (titre, description_courte, contenu, categorie_id, auteur_id, image)
-                               VALUES (?, ?, ?, ?, ?, ?)");
-        $ins->execute([$titre, $desc, $contenu, $cat_id, $_SESSION['user_id'], $nom_image]);
-        $_SESSION['msg'] = "Article ajouté avec succès.";
-        header('Location: liste.php');
+        $ins = $db_handle->prepare("INSERT INTO articles (titre, description_courte, contenu, categorie_id, auteur_id, image) VALUES (?,?,?,?,?,?)");
+        $ins->execute([$t, $d, $c, $cat, $_SESSION['user_id'], $img_name]);
+        
+        header('Location: liste.php?ok=1');
         exit;
+    } else {
+        $erreur_form = "Les champs marqués d'une * sont obligatoires.";
     }
 }
 
-$cats = $pdo->query("SELECT id, nom FROM categories ORDER BY nom")->fetchAll();
+// Pour remplir le select
+$q_cats = $db_handle->query("SELECT * FROM categories ORDER BY nom");
+$mes_cats = $q_cats->fetchAll();
 
-require_once '../entete.php';
-require_once '../menu.php';
+$page_titre = "Nouvel article";
+include '../entete.php';
+include '../menu.php';
 ?>
 
 <main class="container">
-    <div class="page-header">
-        <h1>Ajouter un article</h1>
-        <a href="liste.php" class="btn-retour">← Retour</a>
+    <div style="max-width:800px; margin: 0 auto; background:var(--card-bg); padding:3rem; border-radius:12px; border:1px solid var(--border);">
+        <h1 style="margin-bottom:2rem">Rédiger une actu</h1>
+
+        <?php if($erreur_form): ?>
+            <p style="color:#ef4444; margin-bottom:1.5rem"><?= $erreur_form ?></p>
+        <?php endif; ?>
+
+        <form action="ajouter.php" method="POST" enctype="multipart/form-data">
+            <div style="margin-bottom:1.5rem">
+                <label style="display:block; margin-bottom:0.5rem">Titre de l'article *</label>
+                <input type="text" name="t" required style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;">
+            </div>
+
+            <div style="margin-bottom:1.5rem">
+                <label style="display:block; margin-bottom:0.5rem">Résumé (description courte)</label>
+                <textarea name="d" rows="2" style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;"></textarea>
+            </div>
+
+            <div style="margin-bottom:1.5rem">
+                <label style="display:block; margin-bottom:0.5rem">Catégorie *</label>
+                <select name="cat_id" required style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;">
+                    <option value="">-- Choisir une catégorie --</option>
+                    <?php foreach($mes_cats as $cat): ?>
+                        <option value="<?= $cat['id'] ?>"><?= $cat['nom'] ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div style="margin-bottom:1.5rem">
+                <label style="display:block; margin-bottom:0.5rem">Contene de l'article *</label>
+                <textarea name="c" rows="10" required style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;"></textarea>
+            </div>
+
+            <div style="margin-bottom:2.5rem">
+                <label style="display:block; margin-bottom:0.5rem">Image d'illustration (optionnelle)</label>
+                <input type="file" name="pic" accept="image/*" style="font-size:0.9rem">
+            </div>
+
+            <button type="submit" class="btn-submit" style="width:100%">PUBLIER MAINTENANT</button>
+        </form>
     </div>
-
-    <?php if (!empty($erreurs)): ?>
-    <div class="alert alert-danger">
-        <ul><?php foreach ($erreurs as $e) echo '<li>' . htmlspecialchars($e) . '</li>'; ?></ul>
-    </div>
-    <?php endif; ?>
-
-    <form id="formArticle" method="POST" action="ajouter.php" enctype="multipart/form-data" novalidate>
-        <div class="form-group">
-            <label for="titre">Titre *</label>
-            <input type="text" id="titre" name="titre"
-                   value="<?= htmlspecialchars($vals['titre']) ?>" placeholder="Titre de l'article">
-            <span class="err-msg" id="err-titre"></span>
-        </div>
-
-        <div class="form-group">
-            <label for="description_courte">Description courte</label>
-            <input type="text" id="description_courte" name="description_courte"
-                   value="<?= htmlspecialchars($vals['description_courte'] ?? '') ?>"
-                   placeholder="Résumé affiché sur la page d'accueil (max 300 car.)">
-            <span class="err-msg" id="err-desc"></span>
-        </div>
-
-        <div class="form-group">
-            <label for="categorie_id">Catégorie *</label>
-            <select id="categorie_id" name="categorie_id">
-                <option value="">-- Choisir --</option>
-                <?php foreach ($cats as $c): ?>
-                    <option value="<?= $c['id'] ?>"
-                        <?= ($vals['categorie_id'] == $c['id']) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($c['nom']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <span class="err-msg" id="err-cat"></span>
-        </div>
-
-        <div class="form-group">
-            <label for="contenu">Contenu *</label>
-            <textarea id="contenu" name="contenu" rows="10"
-                      placeholder="Rédigez votre article ici..."><?= htmlspecialchars($vals['contenu']) ?></textarea>
-            <span class="err-msg" id="err-contenu"></span>
-        </div>
-
-        <div class="form-group">
-            <label for="image">Image (optionnel)</label>
-            <input type="file" id="image" name="image" accept="image/*">
-        </div>
-
-        <button type="submit" class="btn-submit">Publier l'article</button>
-    </form>
 </main>
 
-<script src="../assets/js/validation.js"></script>
-<?php require_once '../pied.php'; ?>
+<?php include '../pied.php'; ?>

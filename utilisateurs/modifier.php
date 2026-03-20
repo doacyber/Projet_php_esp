@@ -1,123 +1,110 @@
 <?php
-$base_url = '../';
-$base_url_path = '../';
-$titre_page = "Modifier un utilisateur";
+/**
+ * Modifier les informations d'un utilisateur
+ */
 
+$chemin_racine = '../';
 require_once '../config.php';
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+session_start();
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'administrateur') {
+    die("Accès réservé aux admins.");
+}
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'administrateur') {
-    header('Location: ../connexion.php');
+$db_link = matos_connexion();
+$msg_alerte = "";
+
+$uid = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if($uid <= 0) {
+    header('Location: liste.php');
     exit;
 }
 
-$pdo = getConnexion();
-$erreurs = [];
+// On récupère le profil
+$stmt_get = $db_link->prepare("SELECT id, nom, prenom, login, role FROM utilisateurs WHERE id = ?");
+$stmt_get->execute([$uid]);
+$profil = $stmt_get->fetch();
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-if ($id <= 0) { header('Location: liste.php'); exit; }
-
-$stmt = $pdo->prepare("SELECT id, nom, prenom, login, role FROM utilisateurs WHERE id = ?");
-$stmt->execute([$id]);
-$user = $stmt->fetch();
-if (!$user) { header('Location: liste.php'); exit; }
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nom    = trim($_POST['nom'] ?? '');
-    $prenom = trim($_POST['prenom'] ?? '');
-    $login  = trim($_POST['login'] ?? '');
-    $role   = $_POST['role'] ?? 'editeur';
-    $mdp    = $_POST['mot_de_passe'] ?? '';
-    $mdp2   = $_POST['mdp_confirm'] ?? '';
-
-    if (strlen($nom) < 2)    $erreurs[] = "Nom trop court.";
-    if (strlen($prenom) < 2) $erreurs[] = "Prénom trop court.";
-    if (strlen($login) < 3)  $erreurs[] = "Login trop court.";
-    if (!in_array($role, ['editeur','administrateur'])) $erreurs[] = "Rôle invalide.";
-
-    if (!empty($mdp)) {
-        if (strlen($mdp) < 6) $erreurs[] = "Mot de passe trop court.";
-        if ($mdp !== $mdp2)   $erreurs[] = "Les mots de passe ne correspondent pas.";
-    }
-
-    if (empty($erreurs)) {
-        $chk = $pdo->prepare("SELECT id FROM utilisateurs WHERE login = ? AND id != ?");
-        $chk->execute([$login, $id]);
-        if ($chk->fetch()) $erreurs[] = "Ce login est déjà pris.";
-    }
-
-    if (empty($erreurs)) {
-        if (!empty($mdp)) {
-            $hash = password_hash($mdp, PASSWORD_DEFAULT);
-            $upd = $pdo->prepare("UPDATE utilisateurs SET nom=?, prenom=?, login=?, role=?, mot_de_passe=? WHERE id=?");
-            $upd->execute([$nom, $prenom, $login, $role, $hash, $id]);
-        } else {
-            $upd = $pdo->prepare("UPDATE utilisateurs SET nom=?, prenom=?, login=?, role=? WHERE id=?");
-            $upd->execute([$nom, $prenom, $login, $role, $id]);
-        }
-        $_SESSION['msg'] = "Utilisateur modifié.";
-        header('Location: liste.php');
-        exit;
-    }
-
-    $user['nom']    = $nom;
-    $user['prenom'] = $prenom;
-    $user['login']  = $login;
-    $user['role']   = $role;
+if(!$profil) {
+    header('Location: liste.php');
+    exit;
 }
 
-require_once '../entete.php';
-require_once '../menu.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $n = trim($_POST['u_nom'] ?? '');
+    $p = trim($_POST['u_prenom'] ?? '');
+    $l = trim($_POST['u_login'] ?? '');
+    $r = $_POST['u_role'] ?? 'editeur';
+    $m = $_POST['u_mdp'] ?? '';
+
+    if ($n != '' && $p != '' && $l != '') {
+        // Update de base
+        $sql_up = "UPDATE utilisateurs SET nom = ?, prenom = ?, login = ?, role = ? WHERE id = ?";
+        $params = [$n, $p, $l, $r, $uid];
+        
+        $op = $db_link->prepare($sql_up);
+        $op->execute($params);
+
+        // Si on a tapé un nouveau pass
+        if ($m != '') {
+            $h = password_hash($m, PASSWORD_DEFAULT);
+            $db_link->prepare("UPDATE utilisateurs SET mot_de_passe = ? WHERE id = ?")->execute([$h, $uid]);
+        }
+
+        $_SESSION['flash_msg'] = "Profil de $p mis à jour.";
+        header('Location: liste.php');
+        exit;
+    } else {
+        $msg_alerte = "Merci de remplir les champs obligatoires.";
+    }
+}
+
+$page_titre = "Modifier Profil";
+include '../entete.php';
+include '../menu.php';
 ?>
 
 <main class="container">
-    <div class="page-header">
-        <h1>Modifier l'utilisateur</h1>
-        <a href="liste.php" class="btn-retour">← Retour</a>
+    <div style="max-width:700px; margin:0 auto; background:var(--card-bg); padding:3rem; border:1px solid var(--border); border-radius:12px;">
+        <h1>Profil de <?= htmlspecialchars($profil['prenom']) ?></h1>
+        
+        <?php if($msg_alerte): ?>
+            <p style="color:#ef4444; margin:1.5rem 0"><?= $msg_alerte ?></p>
+        <?php endif; ?>
+
+        <form action="modifier.php?id=<?= $uid ?>" method="POST">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem">
+                <div>
+                    <label style="display:block; margin-bottom:0.5rem; color:var(--text-dim); font-size:0.8rem">PRÉNOM</label>
+                    <input type="text" name="u_prenom" value="<?= htmlspecialchars($profil['prenom']) ?>" required style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:0.5rem; color:var(--text-dim); font-size:0.8rem">NOM</label>
+                    <input type="text" name="u_nom" value="<?= htmlspecialchars($profil['nom']) ?>" required style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;">
+                </div>
+            </div>
+
+            <div style="margin-bottom:1.5rem">
+                <label style="display:block; margin-bottom:0.5rem; color:var(--text-dim); font-size:0.8rem">IDENTIFIANT (LOGIN)</label>
+                <input type="text" name="u_login" value="<?= htmlspecialchars($profil['login']) ?>" required style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;">
+            </div>
+
+            <div style="margin-bottom:1.5rem">
+                <label style="display:block; margin-bottom:0.5rem; color:var(--text-dim); font-size:0.8rem">RÔLE</label>
+                <select name="u_role" style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;">
+                    <option value="editeur" <?= $profil['role']=='editeur'?'selected':'' ?>>Éditeur</option>
+                    <option value="administrateur" <?= $profil['role']=='administrateur'?'selected':'' ?>>Administrateur</option>
+                </select>
+            </div>
+
+            <div style="margin-top:2rem; padding-top:2rem; border-top:1px solid var(--border);">
+                <label style="display:block; margin-bottom:0.5rem; color:var(--text-dim); font-size:0.8rem">CHANGER LE MOT DE PASSE (LAISSER VIDE SI INCHANGÉ)</label>
+                <input type="password" name="u_mdp" style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;">
+            </div>
+
+            <button type="submit" class="btn-submit" style="width:100%; margin-top:2.5rem">METTRE À JOUR</button>
+        </form>
     </div>
-
-    <?php if (!empty($erreurs)): ?>
-    <div class="alert alert-danger"><ul>
-        <?php foreach ($erreurs as $e) echo '<li>' . htmlspecialchars($e) . '</li>'; ?>
-    </ul></div>
-    <?php endif; ?>
-
-    <form method="POST" action="modifier.php?id=<?= $id ?>" novalidate>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="prenom">Prénom *</label>
-                <input type="text" id="prenom" name="prenom" value="<?= htmlspecialchars($user['prenom']) ?>">
-            </div>
-            <div class="form-group">
-                <label for="nom">Nom *</label>
-                <input type="text" id="nom" name="nom" value="<?= htmlspecialchars($user['nom']) ?>">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="login">Login *</label>
-            <input type="text" id="login" name="login" value="<?= htmlspecialchars($user['login']) ?>">
-        </div>
-        <div class="form-group">
-            <label for="role">Rôle *</label>
-            <select id="role" name="role">
-                <option value="editeur" <?= $user['role']==='editeur' ? 'selected':'' ?>>Éditeur</option>
-                <option value="administrateur" <?= $user['role']==='administrateur' ? 'selected':'' ?>>Administrateur</option>
-            </select>
-        </div>
-        <p class="form-hint">Laisser vide pour ne pas changer le mot de passe.</p>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="mot_de_passe">Nouveau mot de passe</label>
-                <input type="password" id="mot_de_passe" name="mot_de_passe">
-            </div>
-            <div class="form-group">
-                <label for="mdp_confirm">Confirmer</label>
-                <input type="password" id="mdp_confirm" name="mdp_confirm">
-            </div>
-        </div>
-        <button type="submit" class="btn-submit">Enregistrer</button>
-    </form>
 </main>
 
-<?php require_once '../pied.php'; ?>
+<?php include '../pied.php'; ?>

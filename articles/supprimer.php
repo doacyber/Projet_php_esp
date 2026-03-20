@@ -1,20 +1,18 @@
 <?php
 require_once '../config.php';
+session_start();
 
-if (session_status() === PHP_SESSION_NONE) session_start();
-
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['editeur','administrateur'])) {
-    header('Location: ../connexion.php');
-    exit;
+if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['editeur', 'administrateur'])) {
+    die("Stop ! Pas autorisé.");
 }
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-if ($id <= 0) { header('Location: liste.php'); exit; }
+$id_del = (int)($_GET['id'] ?? 0);
 
-$pdo = getConnexion();
-$stmt = $pdo->prepare("DELETE FROM articles WHERE id = ?");
-$stmt->execute([$id]);
+if ($id_del > 0) {
+    $db = matos_connexion();
+    $res = $db->prepare("DELETE FROM articles WHERE id = :id");
+    $res->execute(['id' => $id_del]);
+}
 
-$_SESSION['msg'] = "Article supprimé.";
-header('Location: liste.php');
+header('Location: liste.php?msg=delete_ok');
 exit;

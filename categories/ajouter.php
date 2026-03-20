@@ -1,65 +1,60 @@
 <?php
-$base_url = '../';
-$base_url_path = '../';
-$titre_page = "Ajouter une catégorie";
+/**
+ * Formulaire d'ajout de catégorie
+ */
 
+$chemin_racine = '../';
 require_once '../config.php';
 
-if (session_status() === PHP_SESSION_NONE) session_start();
-
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['editeur','administrateur'])) {
-    header('Location: ../connexion.php');
-    exit;
+@session_start();
+if($_SESSION['role'] == 'invite') {
+    die("Pas le droit d'être ici !");
 }
 
-$erreurs = [];
-$nom = $desc = '';
+$msg_err = "";
+$conn_db = matos_connexion();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nom  = trim($_POST['nom'] ?? '');
-    $desc = trim($_POST['description'] ?? '');
+    $nom_cat = trim($_POST['n'] ?? '');
+    $desc_cat = trim($_POST['d'] ?? '');
 
-    if (strlen($nom) < 2) $erreurs[] = "Le nom doit faire au moins 2 caractères.";
-
-    if (empty($erreurs)) {
-        $pdo = getConnexion();
-        $ins = $pdo->prepare("INSERT INTO categories (nom, description) VALUES (?, ?)");
-        $ins->execute([$nom, $desc]);
-        $_SESSION['msg'] = "Catégorie ajoutée.";
-        header('Location: liste.php');
+    if($nom_cat != '') {
+        $prep = $conn_db->prepare("INSERT INTO categories (nom, description) VALUES (?, ?)");
+        $prep->execute([$nom_cat, $desc_cat]);
+        header('Location: liste.php?ok=1');
         exit;
+    } else {
+        $msg_err = "Le nom est obligatoire, merci.";
     }
 }
 
-require_once '../entete.php';
-require_once '../menu.php';
+$page_titre = "Nouvelle Thématique";
+include '../entete.php';
+include '../menu.php';
 ?>
 
 <main class="container">
-    <div class="page-header">
-        <h1>Nouvelle catégorie</h1>
-        <a href="liste.php" class="btn-retour">← Retour</a>
+    <div style="max-width:600px; margin:0 auto; background:var(--card-bg); padding:3rem; border-radius:12px; border:1px solid var(--border);">
+        <h1 style="margin-bottom:2rem">Ajouter une thématique</h1>
+
+        <?php if($msg_err): ?>
+            <p style="color:#ef4444; margin-bottom:1.5rem"><?= $msg_err ?></p>
+        <?php endif; ?>
+
+        <form action="ajouter.php" method="POST">
+            <div style="margin-bottom:1.5rem">
+                <label style="display:block; margin-bottom:0.5rem; color:var(--text-dim); font-size:0.8rem">NOM DE LA CATÉGORIE *</label>
+                <input type="text" name="n" required style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;">
+            </div>
+
+            <div style="margin-bottom:2rem">
+                <label style="display:block; margin-bottom:0.5rem; color:var(--text-dim); font-size:0.8rem">DESCRIPTION (FACULTATIF)</label>
+                <textarea name="d" rows="3" style="width:100%; padding:0.8rem; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px;"></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit" style="width:100%; padding:1rem">CRÉER LA CATÉGORIE</button>
+        </form>
     </div>
-
-    <?php if (!empty($erreurs)): ?>
-    <div class="alert alert-danger"><ul>
-        <?php foreach ($erreurs as $e) echo '<li>' . htmlspecialchars($e) . '</li>'; ?>
-    </ul></div>
-    <?php endif; ?>
-
-    <form method="POST" action="ajouter.php" id="formCat" novalidate>
-        <div class="form-group">
-            <label for="nom">Nom *</label>
-            <input type="text" id="nom" name="nom" value="<?= htmlspecialchars($nom) ?>" placeholder="Ex: Technologie">
-            <span class="err-msg" id="err-nom"></span>
-        </div>
-        <div class="form-group">
-            <label for="description">Description</label>
-            <textarea id="description" name="description" rows="3"><?= htmlspecialchars($desc) ?></textarea>
-        </div>
-        <button type="submit" class="btn-submit">Ajouter</button>
-    </form>
 </main>
 
-<script src="../assets/js/validation.js"></script>
-<?php require_once '../pied.php'; ?>
+<?php include '../pied.php'; ?>

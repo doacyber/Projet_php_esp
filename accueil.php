@@ -1,115 +1,148 @@
 <?php
-$base_url = '';
-$base_url_path = '';
-$titre_page = "Accueil — Actualités ESP";
+/**
+ * Main Page - News
+ * Version: 3.0
+ */
 
 require_once 'config.php';
-require_once 'entete.php';
-require_once 'menu.php';
 
-$pdo = getConnexion();
+$db = matos_connexion();
 
-$cat_id = isset($_GET['categorie_id']) ? (int)$_GET['categorie_id'] : 0;
+$pageTitle = "News - Home";
 
-$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$offset = ($page - 1) * ARTICLES_PAR_PAGE;
+// Get filtres
+$categoryId = filter_input(INPUT_GET, 'category_id', FILTER_VALIDATE_INT) ?? 0;
+$page = filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) ?? 1;
 
-if ($cat_id > 0) {
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM articles WHERE categorie_id = ?");
-    $stmt->execute([$cat_id]);
+$page = ($page < 1) ? 1 : $page;
+$limit = NB_MAX_ARTICLES;
+$offset = ($page - 1) * $limit;
+
+//  total articles
+if ($categoryId > 0) {
+    $countStmt = $db->prepare("SELECT COUNT(*) FROM articles WHERE categorie_id = :category");
+    $countStmt->execute(['category' => $categoryId]);
 } else {
-    $stmt = $pdo->query("SELECT COUNT(*) FROM articles");
+    $countStmt = $db->query("SELECT COUNT(*) FROM articles");
 }
-$total = $stmt->fetchColumn();
-$nb_pages = (int)ceil($total / ARTICLES_PAR_PAGE);
 
-if ($cat_id > 0) {
-    $req = $pdo->prepare("
-        SELECT a.id, a.titre, a.description_courte, a.date_publication, a.image,
-               c.nom AS categorie, u.prenom, u.nom AS auteur_nom
-        FROM articles a
-        LEFT JOIN categories c ON a.categorie_id = c.id
-        LEFT JOIN utilisateurs u ON a.auteur_id = u.id
-        WHERE a.categorie_id = ?
-        ORDER BY a.date_publication DESC
-        LIMIT " . ARTICLES_PAR_PAGE . " OFFSET " . $offset
-    );
-    $req->execute([$cat_id]);
-} else {
-    $req = $pdo->query("
-        SELECT a.id, a.titre, a.description_courte, a.date_publication, a.image,
-               c.nom AS categorie, u.prenom, u.nom AS auteur_nom
-        FROM articles a
-        LEFT JOIN categories c ON a.categorie_id = c.id
-        LEFT JOIN utilisateurs u ON a.auteur_id = u.id
-        ORDER BY a.date_publication DESC
-        LIMIT " . ARTICLES_PAR_PAGE . " OFFSET " . $offset
-    );
-}
-$articles = $req->fetchAll();
+$totalItems = $countStmt->fetchColumn();
+$totalPages = ceil($totalItems / $limit);
 
-$nom_cat = '';
-if ($cat_id > 0) {
-    $sc = $pdo->prepare("SELECT nom FROM categories WHERE id = ?");
-    $sc->execute([$cat_id]);
-    $row = $sc->fetch();
-    $nom_cat = $row ? $row['nom'] : '';
+
+$sql = "
+    SELECT 
+        a.id,
+        a.titre,
+        a.description_courte,
+        a.image,
+        a.date_publication,
+        c.nom AS category_name,
+        u.prenom AS author_firstname,
+        u.nom AS author_lastname
+    FROM articles a
+    LEFT JOIN categories c ON a.categorie_id = c.id
+    LEFT JOIN utilisateurs u ON a.auteur_id = u.id
+";
+
+$params = [];
+
+if ($categoryId > 0) {
+    $sql .= " WHERE a.categorie_id = :category";
+    $params['category'] = $categoryId;
 }
+
+$sql .= " ORDER BY a.date_publication DESC LIMIT :offset, :limit";
+
+$stmt = $db->prepare($sql);
+
+
+if ($categoryId > 0) {
+    $stmt->bindValue(':category', $categoryId, PDO::PARAM_INT);
+}
+$stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+$stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+
+$stmt->execute();
+$articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+
+$sectionTitle = "All News";
+if ($categoryId > 0 && !empty($articles)) {
+    $sectionTitle = $articles[0]['category_name'];
+}
+
+include 'entete.php';
+include 'menu.php';
 ?>
 
 <main class="container">
     <div class="page-header">
-        <?php if ($nom_cat): ?>
-            <h1>Catégorie : <?= htmlspecialchars($nom_cat) ?></h1>
-            <a href="accueil.php" class="btn-retour">← Tous les articles</a>
-        <?php else: ?>
-            <h1>Dernières actualités</h1>
-        <?php endif; ?>
+        <h1><?= htmlspecialchars($sectionTitle) ?></h1>
+        <p class="text-muted">Latest updates and announcements.</p>
     </div>
 
     <?php if (empty($articles)): ?>
-        <p class="msg-vide">Aucun article pour le moment.</p>
-    <?php else: ?>
-
-    <div class="articles-liste">
-        <?php foreach ($articles as $art): ?>
-        <div class="article-card">
-            <?php if (!empty($art['image']) && file_exists('uploads/' . $art['image'])): ?>
-                <img src="uploads/<?= htmlspecialchars($art['image']) ?>" alt="" class="article-img">
-            <?php endif; ?>
-            <div class="article-body">
-                <div class="article-meta">
-                    <span class="badge-cat"><?= htmlspecialchars($art['categorie'] ?? 'Non classé') ?></span>
-                    <span class="article-date"><?= date('d/m/Y', strtotime($art['date_publication'])) ?></span>
-                </div>
-                <h2 class="article-titre">
-                    <a href="articles/detail.php?id=<?= $art['id'] ?>">
-                        <?= htmlspecialchars($art['titre']) ?>
-                    </a>
-                </h2>
-                <p class="article-desc"><?= htmlspecialchars($art['description_courte']) ?></p>
-                <div class="article-footer">
-                    <span class="auteur">Par <?= htmlspecialchars($art['prenom'] . ' ' . $art['auteur_nom']) ?></span>
-                    <a href="articles/detail.php?id=<?= $art['id'] ?>" class="lire-plus">Lire la suite →</a>
-                </div>
-            </div>
+        <div class="empty-state">
+            <p>No content available.</p>
         </div>
-        <?php endforeach; ?>
-    </div>
 
-    <?php if ($nb_pages > 1): ?>
-    <div class="pagination">
-        <?php if ($page > 1): ?>
-            <a href="?page=<?= $page-1 ?><?= $cat_id ? '&categorie_id='.$cat_id : '' ?>" class="btn-page">← Précédent</a>
+    <?php else: ?>
+        <div class="articles-container">
+            <?php foreach ($articles as $article): ?>
+                <div class="article-card">
+
+                    <div class="article-img-wrapper">
+                        <?php if (!empty($article['image'])): ?>
+                            <img src="uploads/<?= htmlspecialchars($article['image']) ?>" class="article-img" alt="">
+                        <?php else: ?>
+                            <div class="placeholder-img"></div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="article-body">
+                        <span class="badge-cat">
+                            <?= htmlspecialchars($article['category_name']) ?>
+                        </span>
+
+                        <h2 class="article-title">
+                            <a href="articles/detail.php?id=<?= (int)$article['id'] ?>">
+                                <?= htmlspecialchars($article['titre']) ?>
+                            </a>
+                        </h2>
+
+                        <p class="article-desc">
+                            <?= htmlspecialchars(mb_strimwidth($article['description_courte'], 0, 150, '...')) ?>
+                        </p>
+
+                        <div class="article-footer">
+                            <span>
+                                By <strong>
+                                    <?= htmlspecialchars($article['author_firstname'] . ' ' . $article['author_lastname']) ?>
+                                </strong>
+                            </span>
+                            <span>
+                                <?= date('d M Y', strtotime($article['date_publication'])) ?>
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <?php if ($totalPages > 1): ?>
+            <div class="pagination">
+                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                    <a href="?page=<?= $i ?><?= $categoryId ? '&category_id=' . $categoryId : '' ?>"
+                       class="<?= ($i === $page) ? 'active' : '' ?>">
+                        <?= $i ?>
+                    </a>
+                <?php endfor; ?>
+            </div>
         <?php endif; ?>
-        <span class="page-info">Page <?= $page ?> / <?= $nb_pages ?></span>
-        <?php if ($page < $nb_pages): ?>
-            <a href="?page=<?= $page+1 ?><?= $cat_id ? '&categorie_id='.$cat_id : '' ?>" class="btn-page">Suivant →</a>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
 
     <?php endif; ?>
 </main>
 
-<?php require_once 'pied.php'; ?>
+<?php include 'pied.php'; ?>
