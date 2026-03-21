@@ -11,7 +11,7 @@ $db = matos_connexion();
 $pageTitle = "News - Home";
 
 // Get filtres
-$categoryId = filter_input(INPUT_GET, 'category_id', FILTER_VALIDATE_INT) ?? 0;
+$categoryId = filter_input(INPUT_GET, 'categorie_id', FILTER_VALIDATE_INT) ?? 0;
 $page = filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) ?? 1;
 
 $page = ($page < 1) ? 1 : $page;
@@ -134,7 +134,7 @@ include 'menu.php';
         <?php if ($totalPages > 1): ?>
             <div class="pagination">
                 <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                    <a href="?page=<?= $i ?><?= $categoryId ? '&category_id=' . $categoryId : '' ?>"
+                    <a href="?page=<?= $i ?><?= $categoryId ? '&categorie_id=' . $categoryId : '' ?>"
                        class="<?= ($i === $page) ? 'active' : '' ?>">
                         <?= $i ?>
                     </a>

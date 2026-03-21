@@ -19,7 +19,15 @@ body {
     font-family: 'Inter', -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, sans-serif;
     font-size: 16px;
     line-height: 1.6;
-    background-color: var(--bg-dark);
+    background: 
+        radial-gradient(circle at top right, rgba(245, 158, 11, 0.15), transparent 40%),
+        radial-gradient(circle at bottom left, rgba(15, 23, 42, 0.8), transparent 40%),
+        linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)),
+        url('https://i0.wp.com/esp.sn/wp-content/uploads/2020/05/esp-1.jpg?fit=800%2C450&ssl=1&is-pending-load=1');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     color: var(--text-main);
     min-height: 100vh;
 }
@@ -32,7 +40,8 @@ a {
 a:hover { color: #fff; }
 
 header {
-    background: #000;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
     padding: 2rem 1.5rem;
     text-align: center;
@@ -59,9 +68,10 @@ header {
 }
 
 .navbar {
-    background: var(--nav-bg);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding: 0 1.5rem;
     position: sticky;
     top: 0;
@@ -114,10 +124,11 @@ header {
     position: absolute;
     top: 100%;
     left: 0;
-    background: #1e293b;
+    background: rgba(30, 41, 59, 0.9);
+    backdrop-filter: blur(10px);
     min-width: 220px;
     box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
-    border: 1px solid var(--border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     flex-direction: column;
 }
 .dropdown:hover .dropdown-menu { display: flex; }
@@ -156,9 +167,16 @@ header {
 }
 
 .container {
-    max-width: 1000px;
+    max-width: 1200px;
     margin: 3rem auto;
-    padding: 0 1rem;
+    padding: 0 1.5rem;
+}
+
+.articles-container {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 30px;
+    margin-bottom: 50px;
 }
 
 .page-header {
@@ -172,24 +190,46 @@ header {
 }
 
 .article-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 2rem;
-    display: grid;
-    grid-template-columns: 300px 1fr;
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
-    transition: transform 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
-.article-card:hover { transform: translateY(-5px); border-color: var(--accent); }
+.article-card:hover { 
+    transform: translateY(-10px); 
+    border-color: var(--accent);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    background: rgba(30, 41, 59, 0.65);
+}
+
+.article-img-wrapper {
+    width: 100%;
+    height: 240px;
+    overflow: hidden;
+    background: #1e293b;
+}
 
 .article-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.6s ease;
+}
+.article-card:hover .article-img {
+    transform: scale(1.1) !important;
 }
 
-.article-body { padding: 2rem; }
+.article-body { 
+    padding: 1.5rem; 
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
 
 .badge-cat {
     background: rgba(245, 158, 11, 0.1);
@@ -203,11 +243,13 @@ header {
     display: inline-block;
 }
 
-.article-titre {
-    font-size: 1.5rem;
+.article-title {
+    font-size: 1.6rem;
     margin-bottom: 1rem;
+    line-height: 1.3;
 }
-.article-titre a { color: var(--text-main); }
+.article-title a { color: var(--text-main); }
+.article-title a:hover { color: var(--accent); }
 
 .article-desc {
     color: var(--text-dim);
@@ -234,9 +276,10 @@ header {
 }
 
 .table-responsive {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
     overflow: hidden;
 }
 .table-admin {
@@ -257,9 +300,14 @@ header {
     font-size: 0.9rem;
 }
 
+@media (max-width: 1000px) {
+    .articles-container {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+}
+
 @media (max-width: 850px) {
-    .article-card { grid-template-columns: 1fr; }
-    .article-img { height: 200px; }
     .navbar > ul { display: none; }
     .nav-auth { position: static; margin-top: 1rem; }
 }
