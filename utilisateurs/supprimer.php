@@ -1,8 +1,4 @@
-<?php
-/**
- * Suppression d'un utilisateur
- */
-
+<?php 
 require_once '../config.php';
 session_start();
 

@@ -1,5 +1,5 @@
 <?php
-// On lance la session direct
+
 if (!session_id()) {
     session_start();
 }

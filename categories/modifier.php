@@ -1,8 +1,4 @@
 <?php
-/**
- * Edition d'une catégorie
- */
-
 $chemin_racine = '../';
 require_once '../config.php';
 
@@ -20,7 +16,7 @@ if($cat_id <= 0) {
     exit;
 }
 
-// On récupère les infos actuelles
+// On récupère les infos  actuelles
 $query = $base_db->prepare("SELECT * FROM categories WHERE id = ?");
 $query->execute([$cat_id]);
 $info_cat = $query->fetch();

@@ -1,8 +1,4 @@
 <?php
-/**
- * Inscription d'un nouveau membre de l'équipe
- */
-
 $chemin_racine = '../';
 require_once '../config.php';
 
@@ -23,10 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $way2  = $_POST['p_mdp2'] ?? '';
     $lvl   = $_POST['p_role'] ?? 'editeur';
 
-    // Des petites vérifs manuelles
     if ($first != '' && $last != '' && $log != '' && $way != '') {
         if ($way === $way2) {
-            // Check si le login existe deja
+            // Check si le login existe deja  
             $chk = $bdd_admin->prepare("SELECT id FROM utilisateurs WHERE login = ?");
             $chk->execute([$log]);
             if ($chk->fetch()) {

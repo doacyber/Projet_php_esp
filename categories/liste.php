@@ -1,7 +1,4 @@
 <?php
-/**
- * Liste des catégories
- */
 
 $chemin_racine = '../';
 require_once '../config.php';
