@@ -1,4 +1,8 @@
 <?php
+/**
+ * Formulaire d'ajout de catégorie
+ */
+
 $chemin_racine = '../';
 require_once '../config.php';
 

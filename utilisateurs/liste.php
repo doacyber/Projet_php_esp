@@ -1,11 +1,14 @@
 <?php
+/**
+ * Liste des gens qui bossent sur le site
+ */
 
 $chemin_racine = '../';
 require_once '../config.php';
 
 session_start();
 
-// Uniquement pour l'admin
+// Uniquement pour l'admin, c'est du sérieux
 if ($_SESSION['role'] !== 'administrateur') {
     die("Dégage, t'as pas les droits !");
 }

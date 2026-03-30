@@ -1,4 +1,8 @@
 <?php
+/**
+ * Modifier les informations d'un utilisateur
+ */
+
 $chemin_racine = '../';
 require_once '../config.php';
 
@@ -41,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $op = $db_link->prepare($sql_up);
         $op->execute($params);
 
-        // Si on a tapé un nouveau pass  
+        // Si on a tapé un nouveau pass
         if ($m != '') {
             $h = password_hash($m, PASSWORD_DEFAULT);
             $db_link->prepare("UPDATE utilisateurs SET mot_de_passe = ? WHERE id = ?")->execute([$h, $uid]);
